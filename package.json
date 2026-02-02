@@ -1,0 +1,25 @@
+{
+  "name": "img_prc",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "node dist/queue/queue.js",
+    "start:worker": "node dist/queue/worker.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "bullmq": "^5.67.2",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "ioredis": "^5.9.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6"
+  }
+}
