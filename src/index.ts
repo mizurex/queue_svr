@@ -1,13 +1,15 @@
-import 'dotenv/config';
-import { Queue } from 'bullmq';
-import ioredis from 'ioredis';
+import "dotenv/config";
+import express from 'express';
+import routes from './routes';
 
-const connection = new ioredis({
-  host: process.env.REDIS_HOST ?? 'localhost',
-  port: Number(process.env.REDIS_PORT ?? 6379),
-  maxRetriesPerRequest: null,
+const app = express();
+
+app.use(express.json());
+
+app.use('/api', routes);
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
-
-const queue = new Queue('queue', { connection });
-
-export { queue , connection};
