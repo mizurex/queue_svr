@@ -2,6 +2,8 @@ import express from 'express';
 import { randomUUID } from 'crypto';
 import { S3Client } from "@aws-sdk/client-s3";
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
+import "dotenv/config";
+import {redis} from "../lib/redis";
 const router = express.Router();
 
 const s3 = new S3Client({
@@ -15,9 +17,12 @@ const s3 = new S3Client({
 
 router.get('/', async (req, res) => {
     try {
+        const {text ="@Turf"} = req.body;
         const jobId = randomUUID();
-    
-        const bucketName = "image-pr-j";
+
+        await redis.set(jobId,text);
+
+        const bucketName = process.env.AWS_BUCKET_NAME!;
         const key = `uploads/${jobId}.jpg`;
     
      
@@ -27,7 +32,7 @@ router.get('/', async (req, res) => {
     Conditions: [
       ["eq", "$Content-Type", "image/jpeg"], 
       ["eq", "$x-amz-meta-user-id", jobId], 
-      ["content-length-range", 0, 10 * 1024 * 1024],
+      ["content-length-range", 0, 5* 1024 * 1024],
     ],
     Expires: 60 
   }); 

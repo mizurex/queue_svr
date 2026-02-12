@@ -1,4 +1,4 @@
-# ---------- Build Stage ----------
+#  Build  
     FROM node:20-alpine AS builder
 
     WORKDIR /app
@@ -12,14 +12,13 @@
     RUN npm run build
     
     
-    # ---------- Production Stage ----------
+    #  Production 
     FROM node:20-alpine
     
     WORKDIR /app
     
     COPY package*.json ./
-    
-    # Install ONLY production dependencies
+
     RUN npm ci --omit=dev
     
     COPY --from=builder /app/dist ./dist

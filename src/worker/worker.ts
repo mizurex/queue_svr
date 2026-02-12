@@ -7,6 +7,7 @@ import {
   GetObjectCommand,
   PutObjectCommand
 } from "@aws-sdk/client-s3";
+import { addWatermark } from "../utils/watermark";
 
 const s3 = new S3Client({
   region: "us-east-1",
@@ -18,14 +19,9 @@ const s3 = new S3Client({
 
 async function processJob(jobData: any) {
   const { jobId, key } = jobData;
-  const bucket = "image-pr-res";
+  const bucket = process.env.AWS_BUCKET_NAME!;
 
   console.log("Processing:", jobId);
-
-  await redis.set(
-    `job:${jobId}`,
-    JSON.stringify({ status: "processing" })
-  );
 
   try {
     const object = await s3.send(
@@ -43,13 +39,19 @@ async function processJob(jobData: any) {
     const buffer = Buffer.concat(chunks);
     console.log("Download successful");
 
+    const text = await redis.get(jobId);
 
-    const processed = await sharp(buffer)
+    const process = await addWatermark(
+      buffer, 
+      text == " "? "©potatoturf" : text as string
+    );
+
+    const processed = await sharp(process)
       .resize(800)
       .webp({ quality: 70 })
       .toBuffer();
 
-    const outputKey = `processed/${jobId}.webp`;
+    const outputKey = `processed/${jobId}.webp`; // s3 key
 
     console.log("Uploading to:", bucket, outputKey);
 
@@ -62,26 +64,10 @@ async function processJob(jobData: any) {
       })
     );
 
-    await redis.set(
-      `job:${jobId}`,
-      JSON.stringify({
-        status: "completed",
-        outputKey,
-      })
-    );
-
     console.log("Completed:", jobId);
   } catch (err) {
     console.error("Failed:", err);
     console.error("Error details:", JSON.stringify(err, null, 2));
-    
-
-    await redis.set(
-      `job:${jobId}`,
-      JSON.stringify({
-        status: "failed",
-      })
-    );
   }
 }
 
@@ -92,7 +78,7 @@ async function startWorker() {
     const result = await redis.rpop("imageQueue");
 
     if (!result) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 3000));
       continue;
     }
 
