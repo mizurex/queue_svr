@@ -1,7 +1,7 @@
 import express from 'express';
 import { randomUUID } from 'crypto';
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { S3Client } from "@aws-sdk/client-s3";
+import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 const router = express.Router();
 
 const s3 = new S3Client({
@@ -17,23 +17,26 @@ router.get('/', async (req, res) => {
     try {
         const jobId = randomUUID();
     
-        const bucketName = "your-uploads-bucket";
+        const bucketName = "image-pr-j";
         const key = `uploads/${jobId}.jpg`;
     
-        const command = new PutObjectCommand({
-          Bucket: bucketName,
-          Key: key,
-          ContentType: "image/jpeg",
-        });
-    
-        const uploadUrl = await getSignedUrl(s3, command, {
-          expiresIn: 60, 
-        });
-    
-        return res.json({
-          jobId,
-          uploadUrl,
-        });
+     
+  const { url, fields } = await createPresignedPost(s3, {
+    Bucket: bucketName,
+    Key: key,
+    Conditions: [
+      ["eq", "$Content-Type", "image/jpeg"], 
+      ["eq", "$x-amz-meta-user-id", jobId], 
+      ["content-length-range", 0, 10 * 1024 * 1024],
+    ],
+    Expires: 60 
+  }); 
+
+  res.json({
+    jobId,
+    url,
+    fields
+  });
       } catch (err) {
         console.error(err);
         return res.status(500).json({ error: "Failed to generate upload URL" });

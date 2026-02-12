@@ -17,7 +17,8 @@ const s3 = new S3Client({
 });
 
 async function processJob(jobData: any) {
-  const { jobId, bucket, key } = jobData;
+  const { jobId, key } = jobData;
+  const bucket = "image-pr-res";
 
   console.log("Processing:", jobId);
 
@@ -27,7 +28,6 @@ async function processJob(jobData: any) {
   );
 
   try {
-    // 1️⃣ Download image from S3
     const object = await s3.send(
       new GetObjectCommand({
         Bucket: bucket,
@@ -44,7 +44,6 @@ async function processJob(jobData: any) {
     console.log("Download successful");
 
 
-    // 2️⃣ Process image
     const processed = await sharp(buffer)
       .resize(800)
       .webp({ quality: 70 })
@@ -54,7 +53,6 @@ async function processJob(jobData: any) {
 
     console.log("Uploading to:", bucket, outputKey);
 
-    // 3️⃣ Upload processed image
     await s3.send(
       new PutObjectCommand({
         Bucket: bucket,
@@ -64,7 +62,6 @@ async function processJob(jobData: any) {
       })
     );
 
-    // 4️⃣ Update status
     await redis.set(
       `job:${jobId}`,
       JSON.stringify({
@@ -89,21 +86,17 @@ async function processJob(jobData: any) {
 }
 
 async function startWorker() {
-  console.log("Worker started...");
+  console.log("Worker started");
 
   while (true) {
-    // Upstash REST client does not support blocking commands like BRPOP,
-    // so we poll the list with RPOP and sleep briefly when it's empty.
     const result = await redis.rpop("imageQueue");
 
     if (!result) {
-      // No job available, wait a bit before polling again
       await new Promise((resolve) => setTimeout(resolve, 1000));
       continue;
     }
 
     let jobData: any;
-    // Support both JSON strings and plain JS objects coming from Redis.
     if (typeof result === "string") {
       try {
         jobData = JSON.parse(result);
