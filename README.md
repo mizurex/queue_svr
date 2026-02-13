@@ -23,31 +23,25 @@ const redis = new Redis({
 export const handler = async (event) => {
   try {
     const record = event.Records[0];
-
-    const bucket = record.s3.bucket.name;
     const key = decodeURIComponent(record.s3.object.key);
 
     const jobId = key.split("/").pop().split(".")[0];
+
 
     await redis.lpush(
       "imageQueue",
       JSON.stringify({
         jobId,
-        bucket,
         key,
+        retries:3
       })
     );
-
-    await redis.set(`job:${jobId}`, JSON.stringify({ status: "queued" }));
-
-    console.log("Job pushed:", jobId);
 
     return {
       statusCode: 200,
     };
-  } catch (err) {
-    console.error(err);
-    throw err;
+  } catch () {
+   
   }
 };
 ```

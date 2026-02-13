@@ -1,6 +1,5 @@
 import "dotenv/config";
 import { redis } from "../lib/redis";
-import 'dotenv/config';
 import sharp from "sharp";
 import {
   S3Client,
@@ -18,7 +17,7 @@ const s3 = new S3Client({
 });
 
 async function processJob(jobData: any) {
-  const { jobId, key } = jobData;
+  const { jobId, key , retries} = jobData;
   const bucket = process.env.AWS_BUCKET_NAME!;
 
   console.log("Processing:", jobId);
@@ -40,10 +39,13 @@ async function processJob(jobData: any) {
     console.log("Download successful");
 
     const text = await redis.get(jobId);
+    const watermarkText = text && typeof text === "string" && text.trim() 
+      ? text.trim() 
+      : "©potatoturf";
 
     const process = await addWatermark(
       buffer, 
-      text == " "? "©potatoturf" : text as string
+      watermarkText
     );
 
     const processed = await sharp(process)
@@ -66,6 +68,16 @@ async function processJob(jobData: any) {
 
     console.log("Completed:", jobId);
   } catch (err) {
+  if( retries > 0){
+     await redis.lpush(
+        "imageQueue",
+        JSON.stringify({
+          jobId,
+          key,
+          retries: retries - 1
+        })
+      );
+  } 
     console.error("Failed:", err);
     console.error("Error details:", JSON.stringify(err, null, 2));
   }
