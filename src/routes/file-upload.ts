@@ -17,7 +17,7 @@ const s3 = new S3Client({
 
 router.get('/', async (req, res) => {
     try {
-        const {text ="@Turf"} = req.body;
+        const text = (req.query.q as string) || "@Turf";
         const jobId = randomUUID();
 
         await redis.set(jobId,text);

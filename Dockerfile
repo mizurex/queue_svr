@@ -12,17 +12,14 @@
     RUN npm run build
     
     
-    #  Production 
+    #  FInal
     FROM node:20-alpine
     
     WORKDIR /app
     
-    COPY package*.json ./
-
-    RUN npm ci --omit=dev
-    
     COPY --from=builder /app/dist ./dist
-    
+    COPY --from=builder /app/node_modules ./node_modules
+   
     ENV NODE_ENV=production
     
     CMD ["node", "dist/index.js"]
